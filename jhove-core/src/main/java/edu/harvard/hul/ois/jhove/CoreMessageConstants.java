@@ -42,11 +42,9 @@ public enum CoreMessageConstants {
 	public static final String EXC_PRV_CNSTRCT = "Entered private constructor for: ";
 	public static final String EXC_PROP_VAL_NULL = "Null value not permitted for property: ";
 	public static final String EXC_SAX_PRSR_MISS = "SAX parser not found: ";
-	public static final String EXC_PROP_CLSS_INCMPT = "Incompatible class for property: ";
-	public static final String EXC_SCL_PROP_CLSS_INCMPT = "Scalar.";
-	public static final String EXC_MAP_PROP_CLSS_INCMPT = "Map.";
-	public static final String EXC_SET_PROP_CLSS_INCMPT = "Set.";
-	public static final String EXC_LIST_PROP_CLSS_INCMPT = "List.";
+	public static final String EXC_PROP_VAL_TYPE_ARITY_INCMPT = "Incompatible value type '%s' for property arity: %s.";
+	public static final String EXC_PROP_VAL_ARRAY_TYPE_INCMPT = "Incompatible array value component type '%s' for property type: %s.";
+	public static final String EXC_PROP_VAL_SCALAR_TYPE_INCMPT = "Incompatible value type '%s' for property type: %s.";
 	public static final String EXC_TEMP_FILE_CRT = "Cannot create temporary file";
 	public static final String EXC_URI_CONV_FAIL = "Cannot convert URI to URL: ";
 	public static final String EXC_URL_NOT_FND = "URL not found: ";

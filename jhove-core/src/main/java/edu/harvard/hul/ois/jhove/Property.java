@@ -73,33 +73,61 @@ public class Property {
          * types here may help avoid difficult chasing down
          * of the bugs such mismatches cause.
          */
-	if (value == null) {
-			throw new NullPointerException (CoreMessageConstants.EXC_PROP_VAL_NULL);
-	}
-	if ((arity == PropertyArity.SCALAR) && !isObjScalarProp(value)) {
-            throw new IncompatibleClassChangeError(String.format(CoreMessageConstants.EXC_SCL_PROP_CLSS_INCMPT,
-                    CoreMessageConstants.EXC_PROP_CLSS_INCMPT));
-        } else if ((arity == PropertyArity.MAP) && (!(value instanceof Map))) {
-            throw new IncompatibleClassChangeError(String.format(CoreMessageConstants.EXC_MAP_PROP_CLSS_INCMPT,
-                    CoreMessageConstants.EXC_PROP_CLSS_INCMPT));
-        } else if ((arity == PropertyArity.SET) && (!(value instanceof Set))) {
-            throw new IncompatibleClassChangeError(String.format(CoreMessageConstants.EXC_SET_PROP_CLSS_INCMPT,
-                    CoreMessageConstants.EXC_PROP_CLSS_INCMPT));
-        } else if ((arity == PropertyArity.LIST) && (!(value instanceof List))) {
-            throw new IncompatibleClassChangeError(String.format(CoreMessageConstants.EXC_LIST_PROP_CLSS_INCMPT,
-                    CoreMessageConstants.EXC_PROP_CLSS_INCMPT));
-	}
+		if (value == null) {
+			throw new NullPointerException(CoreMessageConstants.EXC_PROP_VAL_NULL);
+		}
 
-	_name  = name;
-	_type  = type;
-	_arity = arity;
-	_value = value;
+		boolean arityMismatch = false;
+
+		switch (arity) {
+			case ARRAY:
+				if (!value.getClass().isArray()) {
+					arityMismatch = true;
+				} else if (!value.getClass().getComponentType().getSimpleName().equalsIgnoreCase(type.name)) {
+					throw new IncompatibleClassChangeError(String.format(CoreMessageConstants.EXC_PROP_VAL_ARRAY_TYPE_INCMPT, value.getClass().getComponentType().getTypeName(), type.name));
+				}
+				break;
+			case LIST:
+				if (!(value instanceof List)) {
+					arityMismatch = true;
+				}
+				break;
+			case MAP:
+				if (!(value instanceof Map)) {
+					arityMismatch = true;
+				}
+				break;
+			case SCALAR:
+				if (!isObjScalarProp(value)) {
+					arityMismatch = true;
+				} else if (!value.getClass().getSimpleName().equalsIgnoreCase(type.name)) {
+					throw new IncompatibleClassChangeError(String.format(CoreMessageConstants.EXC_PROP_VAL_SCALAR_TYPE_INCMPT, value.getClass().getTypeName(), type.name));
+				}
+				break;
+			case SET:
+				if (!(value instanceof Set)) {
+					arityMismatch = true;
+				}
+				break;
+			default:
+				break;
+		}
+
+		if (arityMismatch) {
+			throw new IncompatibleClassChangeError(String.format(CoreMessageConstants.EXC_PROP_VAL_TYPE_ARITY_INCMPT, value.getClass().getTypeName(), arity.name));
+		}
+
+		_name  = name;
+		_type  = type;
+		_arity = arity;
+		_value = value;
     }
 
     private static boolean isObjScalarProp(Object toTest) {
         return !(toTest instanceof List ||
                  toTest instanceof Map ||
-                 toTest instanceof Set);
+                 toTest instanceof Set ||
+				 toTest.getClass().isArray());
     }
 
     /******************************************************************
