@@ -641,6 +641,7 @@ public abstract class Tokenizer
                 _wsString = EMPTY;
             }
 
+            _offset = _file.length();
         }
 
         return token;
