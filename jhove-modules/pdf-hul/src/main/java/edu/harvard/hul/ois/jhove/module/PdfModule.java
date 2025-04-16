@@ -212,9 +212,9 @@ public class PdfModule extends ModuleBase {
     private static final String DICT_KEY_EXTENSIONS = "Extensions";
     private static final String DICT_KEY_EXTENSIONLEVEL = "ExtensionLevel";
     private static final String DICT_KEY_BASEVERSION = "BaseVersion";
+    private static final String PROP_NAME_EXTENSIONS = DICT_KEY_EXTENSIONS;
     private static final String PROP_NAME_BASEVERSION = DICT_KEY_BASEVERSION;
     private static final String PROP_NAME_EXTENSIONLEVEL = DICT_KEY_EXTENSIONLEVEL;
-    private static final String PROP_NAME_DEVELOPERPREFIX = "DeveloperPrefix";
     private static final String DICT_KEY_NAME = "Name";
     private static final String DICT_KEY_NAMES = "Names";
     private static final String DICT_KEY_EMBEDDED_FILES = "EmbeddedFiles";
@@ -1726,64 +1726,70 @@ public class PdfModule extends ModuleBase {
             PdfObject extensions = _docCatDict.get(DICT_KEY_EXTENSIONS);
             if (extensions != null) {
                 if (extensions instanceof PdfDictionary) {
-                    Iterator<PdfObject> extensionsIter = ((PdfDictionary) extensions).iterator();
-                    while (extensionsIter.hasNext()) {
+                    PdfDictionary extensionsDict = (PdfDictionary) extensions;
+                    Set<String> extensionPrefixes = extensionsDict.getKeys();
+                    List<Property> developerExtensions = new ArrayList<Property>(extensionPrefixes.size());
+                    for (String prefix : extensionPrefixes) {
+                        PdfObject extensionObj = extensionsDict.get(prefix);
 
-                        PdfObject extensionObj = extensionsIter.next();
                         // Arlington PDF Model defines extension as a direct object
                         // https://github.com/pdf-association/arlington-pdf-model/blob/master/tsv/latest/Extensions.tsv
                         if (extensionObj instanceof PdfIndirectObj) {
                             info.setWellFormed(false);
+
+                            // FIXME: error message should have information about prefix as context
                             JhoveMessage message = JhoveMessages.getMessageInstance(
                                     MessageConstants.PDF_HUL_156.getId(),
                                     MessageConstants.PDF_HUL_156.getMessage());
                             info.setMessage(new ErrorMessage(message)); // PDF-HUL-156
-                        } else {
-                            PdfDictionary extension = (PdfDictionary) extensionObj;
-                            Set<String> developerPrefixKeys = ((PdfDictionary) extensions).getKeys();
-                            for (String developerPrefixKey : developerPrefixKeys) {
-                                if (PdfStrings.PREFIXNAMESREGISTY.contains(developerPrefixKey.toString())) {
-                                    p = new Property(PROP_NAME_DEVELOPERPREFIX, PropertyType.STRING,
-                                            developerPrefixKey.toString());
-                                    _docCatalogList.add(p);
-                                    PdfSimpleObject BaseVersion = (PdfSimpleObject) extension.get(DICT_KEY_BASEVERSION);
-                                    String infoVersString = _version;
-                                    String versString = BaseVersion.getStringValue();
-                                    try {
-                                        double ver = Double.parseDouble(versString);
-                                        double infoVer = Double.parseDouble(infoVersString);
+                            continue;
+                        }
 
-                                        // BaseVersion "shall be less than or equal to the PDF version" and "may be different from the version number in the document header or that supplied by the Version key in the Catalog [...] because it reflects the version of the standard that has been extended and not the version of this particular file"
-                                        if (ver > infoVer) {
-                                            // FIXME: this needs a separate error ID as this is a distinct case
-                                            String mess = MessageFormat.format(
-                                                    MessageConstants.PDF_HUL_87.getMessage(),
-                                                    infoVersString, ver);
-                                            JhoveMessage message = JhoveMessages.getMessageInstance(
-                                                    MessageConstants.PDF_HUL_87.getId(), mess);
-                                            info.setMessage(new InfoMessage(message));
-                                        } else {
-                                            p = new Property(PROP_NAME_BASEVERSION, PropertyType.STRING, versString);
-                                            _docCatalogList.add(p);
-                                        }
-                                    } catch (NumberFormatException e) {
-                                        throw new PdfInvalidException(MessageConstants.PDF_HUL_88); // PDF-HUL-88
-                                    }
-                                    PdfSimpleObject extensionLevel = (PdfSimpleObject) extension
-                                            .get(DICT_KEY_EXTENSIONLEVEL);
-                                    if (extensionLevel != null) {
-                                        p = new Property(PROP_NAME_EXTENSIONLEVEL, PropertyType.INTEGER,
-                                                extensionLevel.getIntValue());
-                                        _docCatalogList.add(p);
-                                    }
-                                } else {
-                                    // There is an unknown developer prefix
-                                    info.setMessage(new InfoMessage(MessageConstants.PDF_HUL_154,
-                                            developerPrefixKey.toString())); // PDF-HUL-154
+                        PdfDictionary extension = (PdfDictionary) extensionObj;
+                        if (PdfStrings.PREFIXNAMESREGISTY.contains(prefix)) {
+                            List<Property> developerExtensionProps = new ArrayList<Property>(2);
+
+                            PdfSimpleObject BaseVersion = (PdfSimpleObject) extension.get(DICT_KEY_BASEVERSION);
+                            String infoVersString = _version;
+                            String versString = BaseVersion.getStringValue();
+
+                            try {
+                                double ver = Double.parseDouble(versString);
+                                double infoVer = Double.parseDouble(infoVersString);
+
+                                // BaseVersion "shall be less than or equal to the PDF version" and "may be different from the version number in the document header or that supplied by the Version key in the Catalog [...] because it reflects the version of the standard that has been extended and not the version of this particular file"
+                                if (ver > infoVer) {
+                                    // FIXME: this needs a separate error ID as this is a distinct case
+                                    String mess = MessageFormat.format(
+                                            MessageConstants.PDF_HUL_87.getMessage(),
+                                            infoVersString, ver);
+                                    JhoveMessage message = JhoveMessages.getMessageInstance(
+                                            MessageConstants.PDF_HUL_87.getId(), mess);
+                                    info.setMessage(new InfoMessage(message));
                                 }
+
+                                developerExtensionProps.add(new Property(PROP_NAME_BASEVERSION, PropertyType.STRING,
+                                        versString));
+                            } catch (NumberFormatException e) {
+                                throw new PdfInvalidException(MessageConstants.PDF_HUL_88); // PDF-HUL-88
                             }
+
+                            PdfSimpleObject extensionLevel = (PdfSimpleObject) extension.get(DICT_KEY_EXTENSIONLEVEL);
+                            if (extensionLevel != null) {
+                                developerExtensionProps.add(new Property(PROP_NAME_EXTENSIONLEVEL, PropertyType.INTEGER,
+                                        extensionLevel.getIntValue()));
+                            }
+
+                            developerExtensions.add(new Property(prefix, PropertyType.PROPERTY, PropertyArity.LIST,
+                                    developerExtensionProps));
+                        } else {
+                            // There is an unknown developer prefix
+                            info.setMessage(new InfoMessage(MessageConstants.PDF_HUL_154, prefix)); // PDF-HUL-154
                         }
                     }
+
+                    _docCatalogList.add(new Property(PROP_NAME_EXTENSIONS, PropertyType.PROPERTY,
+                            PropertyArity.LIST, developerExtensions));
                 }
             }
 
