@@ -52,6 +52,8 @@ public final class Destination {
 	/* Page object for explicit destination. */
 	private PdfDictionary _pageDest;
 
+	private int _containingObjNumber;
+
 	/**
 	 * Constructor. If this is a named destination, the destObj
 	 * may be a PdfArray or a PdfDictionary; if this is not a
@@ -67,10 +69,12 @@ public final class Destination {
 	 *            from a named destination.
 	 */
 	public Destination(final PdfObject destObj, final PdfModule module,
-			final boolean named) throws PdfException, IOException {
-    	if (destObj == null) {
-    		throw new IllegalArgumentException("Parameter destObj cannot be null.");
-    	}
+			final boolean named, final int containingObjNumber) throws PdfException, IOException {
+		if (destObj == null) {
+			throw new IllegalArgumentException("Parameter destObj cannot be null.");
+		}
+
+		_containingObjNumber = containingObjNumber;
 		if (!named && destObj instanceof PdfSimpleObject) {
 			_indirect = true;
 			_indirectDest = (PdfSimpleObject) destObj;
@@ -90,16 +94,16 @@ public final class Destination {
 				// The D entry is just like the array above.
 				_pageDest = findDirectDest(module, destArray);
 			} else {
-				throw new PdfInvalidException(MessageConstants.PDF_HUL_1); // PDF-HUL-1
+				throw new PdfInvalidException(MessageConstants.PDF_HUL_1, containingObjNumber); // PDF-HUL-1
 			}
 		} catch (ClassCastException e) {
-			throw new PdfInvalidException(MessageConstants.PDF_HUL_2); // PDF-HUL-2
+			throw new PdfInvalidException(MessageConstants.PDF_HUL_2, containingObjNumber); // PDF-HUL-2
 		} catch (IOException e) {
 			JhoveMessage message = JhoveMessages.getMessageInstance(
 					MessageConstants.PDF_HUL_3.getId(),
 					String.format(MessageConstants.PDF_HUL_3.getMessage(), // PDF-HUL-3
 							e.getLocalizedMessage(), Integer.valueOf(destArray._objNumber)));
-			throw new PdfInvalidException(message);
+			throw new PdfInvalidException(message, containingObjNumber);
 		}
 	}
 

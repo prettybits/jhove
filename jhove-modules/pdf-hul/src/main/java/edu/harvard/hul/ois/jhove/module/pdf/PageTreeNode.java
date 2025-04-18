@@ -33,9 +33,9 @@ public class PageTreeNode extends DocNode
      */
     public PageTreeNode (PdfModule module,
 		PageTreeNode parent, 
-		PdfDictionary dict) throws PdfMalformedException
+            PdfDictionary dict, int containingObjNumber) throws PdfMalformedException
     {
-        super (module, parent, dict);
+        super(module, parent, dict, containingObjNumber);
         _pageObjectFlag = false;
         _descendants = new ArrayList<> (1);  // Empty list in case it doesn't get built
     }
@@ -76,7 +76,7 @@ public class PageTreeNode extends DocNode
                 if (type != null &&
                         "Page".equals (type.getStringValue())) {
                     PageObject pageObj = new PageObject
-                        (_module, this, _dict);
+                    (_module, this, _dict, _containingObjNumber);
                     _descendants = new ArrayList<> (1);
                     _descendants.add (pageObj);
                 }
@@ -105,16 +105,20 @@ public class PageTreeNode extends DocNode
                             _module.resolveIndirectObject (kidRef);
                     PdfSimpleObject kidtype = 
                             (PdfSimpleObject) kid.get("Type");
+
+                    if (kidtype == null) {
+                        throw new PdfInvalidException(MessageConstants.PDF_HUL_29, kid.getObjNumber());
+                    }
                     String kidtypeStr = kidtype.getStringValue ();
                     if ("Page".equals (kidtypeStr)) {
                         PageObject pageObj = new PageObject 
-                            (_module, this, kid);
+                        (_module, this, kid, kid.getObjNumber());
                         pageObj.loadContent (_module);
                         _descendants.add(pageObj);
                     }
                     else if ("Pages".equals (kidtypeStr)) {
                         PageTreeNode nodeObj = 
-                            new PageTreeNode (_module, this, kid);
+                                new PageTreeNode(_module, this, kid, kid.getObjNumber());
                         nodeObj.buildSubtree (false, recGuard - 1);
                         _descendants.add(nodeObj);
                     }
@@ -125,10 +129,10 @@ public class PageTreeNode extends DocNode
             throw ee;
         }
         catch (ArrayIndexOutOfBoundsException excep) {
-            throw new PdfInvalidException(MessageConstants.PDF_HUL_147); // PDF-HUL-147
+            throw new PdfInvalidException(MessageConstants.PDF_HUL_147, _containingObjNumber); // PDF-HUL-147
         }
         catch (Exception e) {
-            throw new PdfInvalidException(MessageConstants.PDF_HUL_29); // PDF-HUL-29
+            throw new PdfInvalidException(MessageConstants.PDF_HUL_29, _containingObjNumber); // PDF-HUL-29
         }
 	
     }

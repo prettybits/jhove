@@ -31,9 +31,9 @@ public class PageObject extends DocNode
      */
     public PageObject (PdfModule module,
                 PageTreeNode parent, 
-                PdfDictionary dict) throws PdfMalformedException
+            PdfDictionary dict, int containingObjNumber) throws PdfMalformedException
     {
-        super (module, parent, dict);
+        super(module, parent, dict, containingObjNumber);
         _pageObjectFlag = true;
     }
 
@@ -197,7 +197,7 @@ public class PageObject extends DocNode
             loadContentFromArray(module, (PdfArray) contents);
         }
         else {
-            throw new PdfInvalidException (MessageConstants.PDF_HUL_27, 0); // PDF-HUL-27
+            throw new PdfInvalidException(MessageConstants.PDF_HUL_27, contents.getObjNumber()); // PDF-HUL-27
         }
     }
 

@@ -19,6 +19,9 @@ public abstract class Message {
     /** Value indicating a null offset. */
     public static final long NULL = -1;
 
+    /** Value indicating no set related object number */
+    public static final int NULLOBJ = -1;
+
     /******************************************************************
      * PRIVATE INSTANCE FIELDS.
      ******************************************************************/
@@ -30,6 +33,9 @@ public abstract class Message {
 
     /** Byte offset to which message applies. */
     protected final long offset;
+
+    /** PDF object to which message applies */
+    protected final int objNumber;
 
     protected final String prefix;
 
@@ -53,11 +59,12 @@ public abstract class Message {
      *                   Byte offset associated with the message.
      */
     protected Message(final JhoveMessage message, final String subMessage,
-            final long offset, final String prefix) {
+            final long offset, final int objNumber, final String prefix) {
         super();
         this.jhoveMessage = message;
         this.subMessage = (subMessage.isEmpty()) ? null : subMessage;
         this.offset = offset;
+        this.objNumber = objNumber;
         this.prefix = prefix;
     }
 
@@ -89,6 +96,13 @@ public abstract class Message {
     }
 
     /**
+     * @return The number of the PDF object to which this message is related.
+     */
+    public int getObjNumber() {
+        return this.objNumber;
+    }
+
+    /**
      * Returns the message's identifier.
      */
     public String getId() {
@@ -105,7 +119,8 @@ public abstract class Message {
 
     @Override
     public String toString() {
-        return "Message [message=" + jhoveMessage + ", _subMessage=" + subMessage + ", _offset=" + offset + "]";
+        return "Message [message=" + jhoveMessage + ", _subMessage=" + subMessage + ", _offset=" + offset
+                + ", _objNumber=" + objNumber + "]";
     }
 
     @Override
@@ -115,6 +130,7 @@ public abstract class Message {
         result = prime * result + ((jhoveMessage == null) ? 0 : jhoveMessage.hashCode());
         result = prime * result + ((subMessage == null) ? 0 : subMessage.hashCode());
         result = prime * result + (int) (offset ^ (offset >>> 32));
+        result = prime * result + (int) objNumber;
         result = prime * result + ((prefix == null) ? 0 : prefix.hashCode());
         return result;
     }
@@ -140,6 +156,9 @@ public abstract class Message {
             return false;
         if (offset != other.offset)
             return false;
+        if (objNumber != other.objNumber) {
+            return false;
+        }
         if (prefix == null) {
             if (other.prefix != null)
                 return false;

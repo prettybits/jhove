@@ -20,7 +20,8 @@ public abstract class DocNode
     protected PageTreeNode _parent;
     
     /** The dictionary which defines this node. */
-    protected PdfDictionary _dict;  
+    protected PdfDictionary _dict;
+    protected int _containingObjNumber;
     
     /** True if this node is a PageObject. */
     protected boolean _pageObjectFlag;
@@ -39,7 +40,7 @@ public abstract class DocNode
      */
     public DocNode (PdfModule module,
                 PageTreeNode parent, 
-                PdfDictionary dict) throws PdfMalformedException
+            PdfDictionary dict, int containingObjNumber) throws PdfMalformedException
     {
          if (dict == null) {
              throw new PdfMalformedException (MessageConstants.PDF_HUL_4); // PDF-HUL-4
@@ -47,6 +48,7 @@ public abstract class DocNode
         _module = module;
         _parent = parent;
         _dict = dict;
+        _containingObjNumber = containingObjNumber;
     }
     
     /**

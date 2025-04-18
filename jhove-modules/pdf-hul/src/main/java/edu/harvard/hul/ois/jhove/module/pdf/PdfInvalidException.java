@@ -33,6 +33,19 @@ public final class PdfInvalidException extends PdfException {
 		super(message, offset);
 	}
 
+	/**
+	 * Creates a PdfInvalidException with specified offset.
+	 */
+	public PdfInvalidException(final JhoveMessage message, final int objNumber) {
+		super(message, objNumber);
+	}
+
+	/**
+	 * Creates a PdfInvalidException with specified offset.
+	 */
+	public PdfInvalidException(final JhoveMessage message, final long offset, final int objNumber) {
+		super(message, offset, objNumber);
+	}
 
 	/**
 	 * Creates a PdfInvalidException with specified offset and token.

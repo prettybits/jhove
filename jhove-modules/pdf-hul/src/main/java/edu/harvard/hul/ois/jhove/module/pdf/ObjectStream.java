@@ -132,7 +132,7 @@ public class ObjectStream {
         }
         catch (IOException e) {
             throw new PdfMalformedException 
-                    (MessageConstants.PDF_HUL_16); // PDF-HUL-16
+            (MessageConstants.PDF_HUL_16, objnum); // PDF-HUL-16
         }
     }
 

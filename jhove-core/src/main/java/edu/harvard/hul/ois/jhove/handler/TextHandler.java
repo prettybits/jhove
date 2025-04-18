@@ -512,6 +512,11 @@ public class TextHandler extends HandlerBase {
         if (offset > -1) {
             _writer.println(margin + " Offset: " + offset);
         }
+
+        int objNumber = message.getObjNumber();
+        if (objNumber != Message.NULLOBJ) {
+            _writer.println(margin + " PDF Object: " + objNumber);
+        }
         _level--;
     }
 

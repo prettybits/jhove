@@ -35,6 +35,19 @@ public class PdfMalformedException extends PdfException {
         super(message, offset);
     }
 
+    /**
+     *  Creates a PdfMalformedException with specified offset.
+     */
+    public PdfMalformedException(final JhoveMessage message, final int objNumber) {
+        super(message, objNumber);
+    }
+
+    /**
+     *  Creates a PdfMalformedException with specified offset.
+     */
+    public PdfMalformedException(final JhoveMessage message, final long offset, final int objNumber) {
+        super(message, offset, objNumber);
+    }
 
     /**
      *  Creates a PdfMalformedException with specified offset and token.

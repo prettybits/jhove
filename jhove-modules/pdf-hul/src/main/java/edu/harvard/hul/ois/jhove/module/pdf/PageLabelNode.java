@@ -21,6 +21,7 @@ public class PageLabelNode
 
     /** The dictionary which defines this node. */
     protected PdfDictionary _dict;
+    protected int _containingObjNumber;
 
     /** Set to true when all subnodes of this node
      *  have been iterated through following a StartWalk. */
@@ -48,11 +49,12 @@ public class PageLabelNode
      */
     public PageLabelNode (PdfModule module,
                 PageLabelNode parent,
-                PdfDictionary dict)
+            PdfDictionary dict, int containingObjNumber)
     {
         _module = module;
         _parent = parent;
         _dict = dict;
+        _containingObjNumber = containingObjNumber;
     }
 
 
@@ -75,7 +77,7 @@ public class PageLabelNode
                             _module.resolveIndirectObject
                                 (kidsVec.elementAt (i));
                     PageLabelNode nodeObj =
-                        new PageLabelNode (_module, this, kid);
+                            new PageLabelNode(_module, this, kid, kid.getObjNumber());
                     nodeObj.buildSubtree ();
                     _descendants.add(nodeObj);
                 }
@@ -181,7 +183,7 @@ public class PageLabelNode
                 PdfArray pairArray = (PdfArray)
                     _module.resolveIndirectObject (_currentLeaf._dict.get ("Nums"));
                 if (pairArray == null) {
-                    throw new PdfInvalidException(MessageConstants.PDF_HUL_18); // PDF-HUL-18
+                    throw new PdfInvalidException(MessageConstants.PDF_HUL_18, _currentLeaf._containingObjNumber); // PDF-HUL-18
                 }
                 _currentNumsVec = pairArray.getContent ();
                 _currentNumsLength = _currentNumsVec.size ();

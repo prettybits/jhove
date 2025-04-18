@@ -60,6 +60,36 @@ public final class InfoMessage extends Message {
 	 *            situation being described.
 	 */
 	public InfoMessage(JhoveMessage message, String subMessage, long offset) {
-        super(message, subMessage, offset, "Info");
+		this(message, subMessage, offset, NULLOBJ);
+	}
+
+	/**
+	 * Creates an InfoMessage with an identifier.
+	 * 
+	 * @param message
+	 *            The message text and its identifier.
+	 * @param subMessage
+	 *            Human-readable additional information.
+	 * @param offset
+	 *            The offset in the file relevant to the
+	 *            situation being described.
+	 */
+	public InfoMessage(JhoveMessage message, String subMessage, int objNumber) {
+		this(message, subMessage, NULL, objNumber);
+	}
+
+	/**
+	 * Creates an InfoMessage with an identifier.
+	 * 
+	 * @param message
+	 *            The message text and its identifier.
+	 * @param subMessage
+	 *            Human-readable additional information.
+	 * @param offset
+	 *            The offset in the file relevant to the
+	 *            situation being described.
+	 */
+	public InfoMessage(JhoveMessage message, String subMessage, long offset, int objNumber) {
+		super(message, subMessage, offset, objNumber, "Info");
 	}
 }

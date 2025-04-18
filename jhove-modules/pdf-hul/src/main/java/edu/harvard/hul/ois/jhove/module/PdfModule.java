@@ -1049,7 +1049,7 @@ public class PdfModule extends ModuleBase {
         try {
             header = PdfHeader.parseHeader(_parser);
         } catch (PdfException e) {
-            info.setMessage(new ErrorMessage(e.getJhoveMessage(), 0L)); // PDF-HUL-155
+            info.setMessage(buildErrorMessageFromPdfException(e)); // PDF-HUL-155
             if (e instanceof PdfInvalidException) {
                 info.setValid(false);
                 return true;
@@ -1420,7 +1420,7 @@ public class PdfModule extends ModuleBase {
         } catch (PdfException e) {
 
             e.disparage(info);
-            info.setMessage(new ErrorMessage(e.getJhoveMessage(), _parser.getOffset()));
+            info.setMessage(buildErrorMessageFromPdfException(e));
             // If it's merely invalid rather than ill-formed, keep going
             return (e instanceof PdfInvalidException);
         }
@@ -1498,7 +1498,7 @@ public class PdfModule extends ModuleBase {
             } catch (PdfException e) {
 
                 e.disparage(info);
-                info.setMessage(new ErrorMessage(e.getJhoveMessage(), _parser.getOffset()));
+                info.setMessage(buildErrorMessageFromPdfException(e));
                 // If it's merely invalid rather than ill-formed, keep going
                 return (e instanceof PdfInvalidException);
             }
@@ -1579,7 +1579,7 @@ public class PdfModule extends ModuleBase {
             }
         } catch (PdfException e) {
             e.disparage(info);
-            info.setMessage(new ErrorMessage(e.getJhoveMessage(), _parser.getOffset()));
+            info.setMessage(buildErrorMessageFromPdfException(e));
             return false;
         } catch (Exception e) {
             info.setValid(false);
@@ -1786,33 +1786,39 @@ public class PdfModule extends ModuleBase {
 
             // Get the Names dictionary in order to grab the
             // EmbeddedFiles and Dests entries.
+            PdfObject docCatNames = _docCatDict.get(DICT_KEY_NAMES);
             try {
                 PdfDictionary namesDict = null;
                 if (!_encrypted) {
-                    namesDict = (PdfDictionary) resolveIndirectObject(
-                            _docCatDict.get(DICT_KEY_NAMES));
+                    namesDict = (PdfDictionary) resolveIndirectObject(docCatNames);
                 }
                 if (namesDict != null) {
                     PdfDictionary embeddedDict = (PdfDictionary) resolveIndirectObject(
                             namesDict.get(DICT_KEY_EMBEDDED_FILES));
                     if (embeddedDict != null) {
                         _embeddedFiles = new NameTreeNode(this, null,
-                                embeddedDict);
+                                embeddedDict, embeddedDict.getObjNumber() != -1 ? embeddedDict.getObjNumber()
+                                        : namesDict.getObjNumber());
                     }
 
                     PdfDictionary dDict = (PdfDictionary) resolveIndirectObject(
                             namesDict.get(DICT_KEY_DESTS));
                     if (dDict != null) {
-                        _destNames = new NameTreeNode(this, null, dDict);
+                        _destNames = new NameTreeNode(this, null, dDict,
+                                dDict.getObjNumber() != -1 ? dDict.getObjNumber() : namesDict.getObjNumber());
                     }
                 }
             } catch (ClassCastException ce) {
                 _logger.info("ClassCastException on names dictionary");
-                throw new PdfInvalidException(MessageConstants.PDF_HUL_89); // PDF-HUL-89
+                throw new PdfInvalidException(MessageConstants.PDF_HUL_89,
+                        docCatNames.getObjNumber() != -1 ? docCatNames.getObjNumber() : _docCatDict.getObjNumber()); // PDF-HUL-89
+            } catch (PdfException pdfe) {
+                throw pdfe;
             } catch (Exception e) {
                 _logger.info("Exception on names dictionary: "
                         + e.getClass().getName());
-                throw new PdfMalformedException(MessageConstants.PDF_HUL_90); // PDF-HUL-90
+                throw new PdfMalformedException(MessageConstants.PDF_HUL_90,
+                        docCatNames.getObjNumber() != -1 ? docCatNames.getObjNumber() : _docCatDict.getObjNumber()); // PDF-HUL-90
             }
 
             // Get the optional Dests dictionary. Note that destinations
@@ -1835,7 +1841,7 @@ public class PdfModule extends ModuleBase {
 
         catch (PdfException e) {
             e.disparage(info); // clears Valid or WellFormed as appropriate
-            info.setMessage(new ErrorMessage(e.getJhoveMessage(), _parser.getOffset()));
+            info.setMessage(buildErrorMessageFromPdfException(e));
             // Keep going if it's only invalid
             return (e instanceof PdfInvalidException);
         } catch (Exception e) {
@@ -2006,7 +2012,7 @@ public class PdfModule extends ModuleBase {
 
         } catch (PdfException e) {
             e.disparage(info);
-            info.setMessage(new ErrorMessage(e.getJhoveMessage(), _parser.getOffset()));
+            info.setMessage(buildErrorMessageFromPdfException(e));
             return (e instanceof PdfInvalidException);
         }
         return true;
@@ -2045,7 +2051,7 @@ public class PdfModule extends ModuleBase {
                     PROP_NAME_TRAPPED);
         } catch (PdfException e) {
             e.disparage(info);
-            info.setMessage(new ErrorMessage(e.getJhoveMessage(), _parser.getOffset()));
+            info.setMessage(buildErrorMessageFromPdfException(e));
             // Keep parsing if it's only invalid
             return (e instanceof PdfInvalidException);
         } catch (Exception e) {
@@ -2082,12 +2088,12 @@ public class PdfModule extends ModuleBase {
                     return false;
                 }
 
-                _docTreeRoot = new PageTreeNode(this, null, pagesDict);
+                _docTreeRoot = new PageTreeNode(this, null, pagesDict, pagesDict.getObjNumber());
                 _docTreeRoot.buildSubtree(true, MAX_PAGE_TREE_DEPTH);
             }
         } catch (PdfException e) {
             e.disparage(info);
-            info.setMessage(new ErrorMessage(e.getJhoveMessage(), _parser.getOffset()));
+            info.setMessage(buildErrorMessageFromPdfException(e));
             // Continue parsing if it's only invalid
             return (e instanceof PdfInvalidException);
         } catch (ArrayIndexOutOfBoundsException excep) {
@@ -2113,12 +2119,14 @@ public class PdfModule extends ModuleBase {
         // the page labels number tree is optional.
         try {
             if (_pageLabelDict != null) {
-                _pageLabelRoot = new PageLabelNode(this, null, _pageLabelDict);
+                _pageLabelRoot = new PageLabelNode(this, null, _pageLabelDict,
+                        _pageLabelDict.getObjNumber() != -1 ? _pageLabelDict.getObjNumber()
+                                : _docCatDict.getObjNumber());
                 _pageLabelRoot.buildSubtree();
             }
         } catch (PdfException e) {
             e.disparage(info);
-            info.setMessage(new ErrorMessage(e.getJhoveMessage(), _parser.getOffset()));
+            info.setMessage(buildErrorMessageFromPdfException(e));
             // Continue parsing if it's only invalid
             return (e instanceof PdfInvalidException);
         } catch (Exception e) {
@@ -2179,7 +2187,7 @@ public class PdfModule extends ModuleBase {
 
         } catch (PdfException e) {
             e.disparage(info);
-            info.setMessage(new ErrorMessage(e.getJhoveMessage(), _parser.getOffset()));
+            info.setMessage(buildErrorMessageFromPdfException(e));
             // Continue parsing if it's only invalid
             return (e instanceof PdfInvalidException);
         } catch (Exception e) {
@@ -2218,7 +2226,7 @@ public class PdfModule extends ModuleBase {
             }
         } catch (PdfException e) {
             e.disparage(info);
-            info.setMessage(new ErrorMessage(e.getJhoveMessage()));
+            info.setMessage(buildErrorMessageFromPdfException(e));
         } catch (Exception e) {
             info.setWellFormed(false);
             String mess = MessageFormat.format(
@@ -2260,7 +2268,7 @@ public class PdfModule extends ModuleBase {
             }
         } catch (PdfException e) {
             e.disparage(info);
-            info.setMessage(new ErrorMessage(e.getJhoveMessage(), _parser.getOffset()));
+            info.setMessage(buildErrorMessageFromPdfException(e));
             // Continue parsing if it's only invalid
             return (e instanceof PdfInvalidException);
         }
@@ -2568,7 +2576,7 @@ public class PdfModule extends ModuleBase {
             }
         } catch (PdfException e) {
             e.disparage(info);
-            info.setMessage(new ErrorMessage(e.getJhoveMessage(), _parser.getOffset()));
+            info.setMessage(buildErrorMessageFromPdfException(e));
         } catch (Exception e) {
             info.setWellFormed(false);
             String mess = MessageFormat.format(
@@ -2651,7 +2659,7 @@ public class PdfModule extends ModuleBase {
             }
         } catch (PdfException e) {
             e.disparage(info);
-            info.setMessage(new ErrorMessage(e.getJhoveMessage(), _parser.getOffset()));
+            info.setMessage(buildErrorMessageFromPdfException(e));
             return;
         } catch (Exception e) {
             // Unexpected exception.
@@ -2763,7 +2771,15 @@ public class PdfModule extends ModuleBase {
              * stream object number (which will itself have to be
              * resolved) and the offset into the object stream.
              */
-            return getObject(objIndex, MAX_OBJ_STREAM_DEPTH);
+            try {
+                return getObject(objIndex, MAX_OBJ_STREAM_DEPTH);
+            } catch (PdfException exc) {
+                if (exc.getObjNumber() == -1) {
+                    exc.setObjNumber(objIndex);
+                }
+
+                throw exc;
+            }
         }
         return obj;
     }
@@ -2783,41 +2799,53 @@ public class PdfModule extends ModuleBase {
             throws PdfException, IOException {
         /* Guard against infinite recursion */
         if (recGuard <= 0) {
-            throw new PdfMalformedException(MessageConstants.PDF_HUL_107);
+            throw new PdfMalformedException(MessageConstants.PDF_HUL_107, objIndex);
         }
         long offset = _xref[objIndex];
         if (offset == 0) {
             return null; // This is considered legitimate by the spec
         }
-        if (offset < 0) {
-            return getObjectFromStream(objIndex, recGuard);
+
+        try {
+            if (offset < 0) {
+                return getObjectFromStream(objIndex, recGuard);
+            }
+
+            _parser.seek(offset);
+            PdfObject obj = _parser.readObjectDef(this);
+
+            //
+            // Experimental carl@openpreservation.org 2018-03-14
+            //
+            // Previously all object numbers (ids) were overwritten even if they'd
+            // previously been assigned.
+            //
+            // This is caused by a little confusion where the object ID and the
+            // index of the _xref array are used interchangeably when they're not
+            // the same thing. There's an assumption when for the _xref array
+            // that the objects will have continuous numeric object numbers. This
+            // means that the object number and array position will always be the
+            // same. The setting of the object number meant that the wrong object
+            // could
+            // be returned with the id changed to match the id requested.
+            //
+            // My guess is that the assignment was put in to ensure that an
+            // object that escaped initialisation had an object number. If that's
+            // the case then the code below will still allow that to happen but
+            // will prevent assigned numbers from been overwritten by the xref array
+            // position.
+            if (obj.getObjNumber() == -1) {
+                obj.setObjNumber(objIndex);
+            }
+
+            return obj;
+        } catch (PdfException e) {
+            if (e.getObjNumber() == -1) {
+                e.setObjNumber(objIndex);
+            }
+
+            throw e;
         }
-        _parser.seek(offset);
-        PdfObject obj = _parser.readObjectDef(this);
-        //
-        // Experimental carl@openpreservation.org 2018-03-14
-        //
-        // Previously all object numbers (ids) were overwritten even if they'd
-        // previously been assigned.
-        //
-        // This is caused by a little confusion where the object ID and the
-        // index of the _xref array are used interchangeably when they're not
-        // the same thing. There's an assumption when for the _xref array
-        // that the objects will have continuous numeric object numbers. This
-        // means that the object number and array position will always be the
-        // same. The setting of the object number meant that the wrong object
-        // could
-        // be returned with the id changed to match the id requested.
-        //
-        // My guess is that the assignment was put in to ensure that an
-        // object that escaped initialisation had an object number. If that's
-        // the case then the code below will still allow that to happen but
-        // will prevent assigned numbers from been overwritten by the xref array
-        // position.
-        if (obj.getObjNumber() == -1) {
-            obj.setObjNumber(objIndex);
-        }
-        return obj;
     }
 
     /**
@@ -3038,7 +3066,7 @@ public class PdfModule extends ModuleBase {
         } catch (PdfException e) {
 
             e.disparage(info);
-            info.setMessage(new ErrorMessage(e.getJhoveMessage(), _parser.getOffset()));
+            info.setMessage(buildErrorMessageFromPdfException(e));
             return;
         }
     }
@@ -3406,7 +3434,7 @@ public class PdfModule extends ModuleBase {
                     PdfObject destObj = ((PdfDictionary) itemObj).get("D");
                     if (destObj != null) {
                         addDestination(destObj, PROP_NAME_ACTION_DEST, propList,
-                                info);
+                                info, destObj.getObjNumber() != -1 ? destObj.getObjNumber() : itemObj.getObjNumber());
                     }
                 }
             }
@@ -3414,7 +3442,8 @@ public class PdfModule extends ModuleBase {
             // Destination object.
             itemObj = annot.get(DICT_KEY_DEST);
             if (itemObj != null) {
-                addDestination(itemObj, PROP_NAME_DESTINATION, propList, info);
+                addDestination(itemObj, PROP_NAME_DESTINATION, propList, info,
+                        itemObj.getObjNumber() != -1 ? itemObj.getObjNumber() : annot.getObjNumber());
             }
 
             // Reply Type (RT) (1.6)
@@ -3463,9 +3492,9 @@ public class PdfModule extends ModuleBase {
      * a representative property to the property list.
      */
     protected void addDestination(PdfObject itemObj, String propName,
-            List<Property> propList, RepInfo info) {
+            List<Property> propList, RepInfo info, int sourceObjNumber) {
         try {
-            Destination dest = new Destination(itemObj, this, false);
+            Destination dest = new Destination(itemObj, this, false, sourceObjNumber);
             if (dest.isIndirect()) {
                 // Encryption messes up name trees
                 if (!_encrypted) {
@@ -3494,7 +3523,7 @@ public class PdfModule extends ModuleBase {
             }
         } catch (PdfException e) {
             propList.add(new Property(propName, PropertyType.STRING, PROP_VAL_NULL));
-            info.setMessage(new ErrorMessage(e.getJhoveMessage(), _parser.getOffset()));
+            info.setMessage(buildErrorMessageFromPdfException(e));
             info.setValid(false);
         } catch (Exception e) {
 
@@ -3535,7 +3564,7 @@ public class PdfModule extends ModuleBase {
             }
         } catch (PdfException e) {
             e.disparage(info);
-            info.setMessage(new ErrorMessage(e.getJhoveMessage()));
+            info.setMessage(buildErrorMessageFromPdfException(e));
         } catch (IOException e) {
             info.setWellFormed(false);
             String subMess = e.getMessage();
@@ -4197,7 +4226,8 @@ public class PdfModule extends ModuleBase {
             PdfObject destObj = dict.get(DICT_KEY_DEST);
             if (destObj != null) {
                 destObj = resolveIndirectObject(destObj);
-                Destination dest = new Destination(destObj, this, false);
+                Destination dest = new Destination(destObj, this, false,
+                        destObj.getObjNumber() != -1 ? destObj.getObjNumber() : dict.getObjNumber());
                 if (dest.isIndirect()) {
                     itemList.add(new Property(PROP_NAME_DESTINATION,
                             PropertyType.STRING, dest.getIndirectDest().getStringValue()));
@@ -4287,7 +4317,7 @@ public class PdfModule extends ModuleBase {
                     _skippedOutlinesReported = true;
                 }
             } catch (PdfException e) {
-                info.setMessage(new ErrorMessage(e.getJhoveMessage(), _parser.getOffset()));
+                info.setMessage(buildErrorMessageFromPdfException(e));
                 e.disparage(info);
                 // If it's just invalid, we can keep going
                 return (e instanceof PdfInvalidException);
@@ -4330,7 +4360,8 @@ public class PdfModule extends ModuleBase {
                     MessageConstants.PDF_HUL_149.getId(), mess);
             throw new PdfInvalidException(message); // PDF-HUL-149
         }
-        Destination dest = new Destination(destObj, this, true);
+        Destination dest = new Destination(destObj, this, true,
+                destObj.getObjNumber() != -1 ? destObj.getObjNumber() : _destNames.getContainingObjNumber());
         return dest.getPageDestObjNumber();
     }
 
@@ -4545,8 +4576,17 @@ public class PdfModule extends ModuleBase {
                         ostrm.readIndex();
                     }
                 } else {
-                    streamObj = resolveIndirectObject(
-                            getObject(objStreamIndex, recGuard - 1));
+                    try {
+                        streamObj = getObject(objStreamIndex, recGuard - 1);
+                    } catch (PdfException exc) {
+                        if (exc.getObjNumber() == -1) {
+                            exc.setObjNumber(objStreamIndex);
+                        }
+
+                        throw exc;
+                    }
+
+                    streamObj = resolveIndirectObject(streamObj);
                     if (streamObj instanceof PdfStream) {
                         ostrm = new ObjectStream((PdfStream) streamObj, _raf);
                         if (ostrm.isValid()) {
@@ -4555,7 +4595,7 @@ public class PdfModule extends ModuleBase {
                             _cachedStreamIndex = objStreamIndex;
                         } else {
                             throw new PdfMalformedException(
-                                    MessageConstants.PDF_HUL_108); // PDF-HUL-108
+                                    MessageConstants.PDF_HUL_108, streamObj.getObjNumber()); // PDF-HUL-108
                         }
                     }
                 }
@@ -4567,11 +4607,29 @@ public class PdfModule extends ModuleBase {
 
         } catch (ZipException excep) {
             _logger.info(excep.getMessage());
-            throw new PdfMalformedException(MessageConstants.PDF_HUL_109); // PDF-HUL-109
+            throw new PdfMalformedException(MessageConstants.PDF_HUL_109, objIndex); // PDF-HUL-109
+        } catch (PdfException exc) {
+            _logger.info(exc.getMessage());
+            if (exc.getObjNumber() == -1) {
+                exc.setObjNumber(objIndex);
+            }
+            // FIXME: why are we falling through and replacing thrown PDF exception with a new one?
         } catch (Exception e) {
             _logger.info(e.getMessage());
             /* Fall through with error */
         }
-        throw new PdfMalformedException(MessageConstants.PDF_HUL_110); // PDF-HUL-110
+        throw new PdfMalformedException(MessageConstants.PDF_HUL_110, objIndex); // PDF-HUL-110
+    }
+
+    private ErrorMessage buildErrorMessageFromPdfException(PdfException exc) {
+        long offset = exc.getOffset();
+        if (offset != -1 && offset != _parser.getOffset()) {
+            _logger.info("PDF Exception offset " + offset + " is different from current parser offset "
+                    + _parser.getOffset());
+        } else if (offset == -1) {
+            offset = _parser.getOffset();
+        }
+
+        return new ErrorMessage(exc.getJhoveMessage(), offset, exc.getObjNumber());
     }
 }

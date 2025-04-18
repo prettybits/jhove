@@ -24,7 +24,8 @@ public class NameTreeNode
 {
     protected PdfModule _module;
     protected NameTreeNode _parent;
-    protected PdfDictionary _dict;  // dictionary which defines this node
+    protected PdfDictionary _dict; // dictionary which defines this node
+    protected int _containingObjNumber;
 
     private Vector _kids = null;
     private Vector _names = null;
@@ -42,23 +43,23 @@ public class NameTreeNode
      */
     public NameTreeNode (PdfModule module,
                 NameTreeNode parent, 
-                PdfDictionary dict) throws PdfException
+            PdfDictionary dict, int containingObjNumber) throws PdfException
     {
         _module = module;
         _parent = parent;
         _dict = dict;
-        
+        _containingObjNumber = containingObjNumber;
+
         try {
             // Get the limits of the key range.  If there are no limits, this
             // must be the root node.
-            PdfArray limitsDict = (PdfArray) module.resolveIndirectObject
-                (dict.get ("Limits"));
+            PdfArray limitsDict = (PdfArray) module.resolveIndirectObject(dict.get("Limits"));
             if (limitsDict != null) {
-                Vector vec = limitsDict.getContent ();
-                PdfSimpleObject limobj = (PdfSimpleObject) vec.elementAt (0);
-                _lowerLimit = limobj.getRawBytes ();
-                limobj = (PdfSimpleObject) vec.elementAt (1);
-                _upperLimit = limobj.getRawBytes ();
+                Vector vec = limitsDict.getContent();
+                PdfSimpleObject limobj = (PdfSimpleObject) vec.elementAt(0);
+                _lowerLimit = limobj.getRawBytes();
+                limobj = (PdfSimpleObject) vec.elementAt(1);
+                _upperLimit = limobj.getRawBytes();
             }
             // Get the Kids and Names arrays.  Normally only one will
             // be present.
@@ -66,26 +67,25 @@ public class NameTreeNode
             // Root Node: Single entry, either Kids or Names, not both
             // Intermediate Node: MUST have Kids and Limits
             // Leaf Node: MUST have Names and Limits
-            PdfArray kidsVec = (PdfArray) module.resolveIndirectObject
-                (dict.get ("Kids"));
+            PdfArray kidsVec = (PdfArray) module.resolveIndirectObject(dict.get("Kids"));
             if (kidsVec != null) {
-                _kids = kidsVec.getContent ();
+                _kids = kidsVec.getContent();
             }
-            PdfArray namesVec = (PdfArray) module.resolveIndirectObject
-                (dict.get ("Names"));
+            PdfArray namesVec = (PdfArray) module.resolveIndirectObject(dict.get("Names"));
             if (namesVec != null) {
-                _names = namesVec.getContent ();
+                _names = namesVec.getContent();
             }
+        } catch (ClassCastException ce) {
+            throw new PdfInvalidException(MessageConstants.PDF_HUL_12, _containingObjNumber); // PDF-HUL-12
+        } catch (ArrayIndexOutOfBoundsException | NullPointerException ce) {
+            throw new PdfInvalidException(MessageConstants.PDF_HUL_13, _containingObjNumber); // PDF-HUL-13
+        } catch (IOException e) {
+            throw new PdfMalformedException(MessageConstants.PDF_HUL_14, _containingObjNumber); // PDF-HUL-14
         }
-        catch (ClassCastException ce) {
-            throw new PdfInvalidException (MessageConstants.PDF_HUL_12); // PDF-HUL-12
-        }
-        catch (ArrayIndexOutOfBoundsException | NullPointerException ce) {
-            throw new PdfInvalidException (MessageConstants.PDF_HUL_13); // PDF-HUL-13
-        }
-        catch (IOException e) {
-            throw new PdfMalformedException (MessageConstants.PDF_HUL_14); // PDF-HUL-14
-        }
+    }
+
+    public int getContainingObjNumber() {
+        return this._containingObjNumber;
     }
 
     /**
@@ -139,7 +139,7 @@ public class NameTreeNode
                     PdfDictionary kid = (PdfDictionary)
                         _module.resolveIndirectObject (
                             (PdfObject) _kids.elementAt (i));
-                    NameTreeNode kidnode = new NameTreeNode (_module, this, kid);
+                        NameTreeNode kidnode = new NameTreeNode(_module, this, kid, kid.getObjNumber());
                     if (kidnode.inBounds (key)) {
                         PdfObject res = kidnode.get (key);
                         if (res != null) {

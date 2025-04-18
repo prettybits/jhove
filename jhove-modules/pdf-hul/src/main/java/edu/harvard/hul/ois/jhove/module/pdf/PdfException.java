@@ -32,7 +32,8 @@ public abstract class PdfException extends Exception {
 	private final JhoveMessage message;
 	private final long _offset;     // File offset at which the exception
 								     // occurred
-	private final Token _token;     // Token associated with the exception
+	private int _objNumber;
+	private final Token _token; // Token associated with the exception
 
 	/**
 	 * Create a PdfException.
@@ -49,12 +50,41 @@ public abstract class PdfException extends Exception {
 	}
 
 	/**
+	 * Create a PdfException with specified offset.
+	 */
+	public PdfException(final JhoveMessage message, final int objNumber) {
+		this(message, objNumber, null);
+	}
+
+	/**
+	 * Create a PdfException with specified offset.
+	 */
+	public PdfException(final JhoveMessage message, final long offset, final int objNumber) {
+		this(message, offset, objNumber, null);
+	}
+
+	/**
 	 * Create a PdfException with specified offset and token.
 	 */
 	public PdfException(final JhoveMessage message, final long offset, final Token token) {
+		this(message, offset, -1, token);
+	}
+
+	/**
+	 * Create a PdfException with specified offset and token.
+	 */
+	public PdfException(final JhoveMessage message, final int objNumber, final Token token) {
+		this(message, -1, objNumber, token);
+	}
+
+	/**
+	 * Create a PdfException with specified offset and token.
+	 */
+	public PdfException(final JhoveMessage message, final long offset, final int objNumber, final Token token) {
 		super(message.getMessage());
 		this.message = message;
 		this._offset = offset;
+		this._objNumber = objNumber;
 		this._token = token;
 	}
 
@@ -72,11 +102,19 @@ public abstract class PdfException extends Exception {
 		return this._offset;
 	}
 
+	public int getObjNumber() {
+		return this._objNumber;
+	}
+
 	/**
 	 * Return the token associated with the exception.
 	 */
 	public Token getToken() {
 		return this._token;
+	}
+
+	public void setObjNumber(int objNumber) {
+		this._objNumber = objNumber;
 	}
 
 	/**
