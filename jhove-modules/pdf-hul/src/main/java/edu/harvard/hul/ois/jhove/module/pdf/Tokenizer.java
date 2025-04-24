@@ -125,16 +125,6 @@ public abstract class Tokenizer
         long intValue = 0;
         // Numeric fractional positional unit.
         double denom = 10.0;
-        // Stream length.
-        long length = 0L;
-        // Last character seen in stream but one.
-        int prelastch = 0;
-        // Last character seen in stream.
-        int lastch = 0;
-        // Line break flag for the beginning of a data stream.
-        boolean sawLineBreak = false;
-        // Carriage return flag for the beginning of a data stream.
-        boolean sawCR = false;
 
         long startOffset = _offset;
 
@@ -320,33 +310,24 @@ public abstract class Tokenizer
                     if (isDelimiter (_ch) || isWhitespace (_ch)) {
                         if (isDelimiter (_ch)) {
                             _lookAhead = true;
-                        }
-                        if (STREAM.equals(buffer.toString())) {
-                            // Streams can't be nested, so this is
-                            // (or better be) a FileTokenizer.
-
-                            _state = State.STREAM;
-                            sawLineBreak = (_ch == LF);
-                            sawCR = (_ch == CR);
-                            token = new Stream ();
-                            length = 0L;
-                            lastch = 0;
-                            prelastch = 0;
-                            initStream ((Stream) token);
-                        }
-                        else {
-                            _state = State.WHITESPACE;
+                        } else {
                             _wsString = EMPTY + (char) _ch;
-                            ((StringValuedToken) token).setValue
-                                    (buffer.toString ());
-                            if (!token.isPdfACompliant()) {
-                                _pdfACompliant = false;
-                            }
-                            return token;
                         }
-                    }
-                    else {
-                        buffer.append ((char) _ch);
+
+                        _state = State.WHITESPACE;
+
+                        String keyword = buffer.toString();
+                        if (keyword.equals(STREAM)) {
+                            return new Stream();
+                        }
+
+                        ((StringValuedToken) token).setValue(buffer.toString());
+                        if (!token.isPdfACompliant()) {
+                            _pdfACompliant = false;
+                        }
+                        return token;
+                    } else {
+                        buffer.append((char) _ch);
                     }
                 }
                 else if (_state == (State.LESS_THAN)) {
@@ -456,150 +437,8 @@ public abstract class Tokenizer
                         }
                     }
                 }
-                else if (_state == (State.STREAM)) {
-                    if (_ch == 'e') {
-                        _state = State.E;
-                    }
-                    else {
-                        prelastch = lastch;
-                        lastch = _ch;
-                        setStreamOffset ((Stream) token);
-                        // Check for a CR/LF or just LF at the start of the stream.
-                        // Since we don't know at this point (not having parsed
-                        // the dictionary) whether the data is external, and since
-                        // the PDF spec says that everything between stream and
-                        // endstream is ignored, we don't know if this requirement
-                        // is enforceable here.  But PDF/A forbids external streams,
-                        // so we can at least check compliance there.  In any case,
-                        // we subtrace the length of the CR/LF from the purported
-                        // stream length.
-                        if (length == 0 && !sawLineBreak) {
-                            if (_ch == LF) {
-                                sawLineBreak = true;
-                                if (!sawCR) {
-                                    _pdfACompliant = false;
-                                }
-                                ((Stream) token).setOffset (
-                                        ((Stream) token).getOffset () + 1);
-                            }
-                            else if (_ch == CR) {
-                                sawCR = true;
-                                ((Stream) token).setOffset (
-                                        ((Stream) token).getOffset () + 1);
-                            }
-                            else {
-                                // Coming here indicates an error if the stream
-                                // isn't external; but we don't know whether
-                                // it is.
-                                _pdfACompliant = false;
-                            }
-                        }
-                        else{
-                            length++;
-                        }
-                    }
-                }
-                else if (_state == (State.E)) {
-                    if (_ch == 'n') {
-                        _state = State.EN;
-                    }
-                    else {
-                        _state = State.STREAM;
-                        length += 2;
-                    }
-                }
-                else if (_state == (State.EN)) {
-                    if (_ch == 'd') {
-                        _state = State.END;
-                    }
-                    else {
-                        _state = State.STREAM;
-                        length += 3;
-                    }
-                }
-                else if (_state == (State.END)) {
-                    if (_ch == 's') {
-                        _state = State.ENDS;
-                    }
-                    else {
-                        _state = State.STREAM;
-                        length += 4;
-                    }
-                }
-                else if (_state == (State.ENDS)) {
-                    if (_ch == 't') {
-                        _state = State.ENDST;
-                    }
-                    else {
-                        _state = State.STREAM;
-                        length += 5;
-                    }
-                }
-                else if (_state == (State.ENDST)) {
-                    if (_ch == 'r') {
-                        _state = State.ENDSTR;
-                    }
-                    else {
-                        _state = State.STREAM;
-                        length += 6;
-                    }
-                }
-                else if (_state == (State.ENDSTR)) {
-                    if (_ch == 'e') {
-                        _state = State.ENDSTRE;
-                    }
-                    else {
-                        _state = State.STREAM;
-                        length += 7;
-                    }
-                }
-                else if (_state == (State.ENDSTRE)) {
-                    if (_ch == 'a') {
-                        _state = State.ENDSTREA;
-                    }
-                    else {
-                        _state = State.STREAM;
-                        length += 8;
-                    }
-                }
-                else if (_state == (State.ENDSTREA)) {
-                    if (_ch == 'm') {
-                        _state = State.ENDSTREAM;
-                    }
-                    else {
-                        _state = State.STREAM;
-                        length += 9;
-                    }
-                }
-                else if (_state == (State.ENDSTREAM)) {
-                    if (isDelimiter (_ch) || isWhitespace (_ch)) {
-                        _state = State.WHITESPACE;
-                        
-                        // The line break, if any, before endstream
-                        // is not counted in the length.
-                        if (prelastch == CR && lastch == LF) {
-                            length -= 2;
-                        }
-                        else if (lastch == LF || lastch == CR) {
-                            length -= 1;
-                        }
-                        ((Stream) token).setLength (length);
-
-                        if (isDelimiter (_ch)) {
-                            _lookAhead = true;
-                            _wsString = EMPTY;
-                        }
-                        else {
-                            _wsString = EMPTY + (char) _ch;
-                        }
-
-                        return token;
-                    }
-                    _state = State.STREAM;
-                }
             }
-        }
-        catch (EOFException eofe) {
+        } catch (EOFException eofe) {
             if (token != null
                     && token instanceof StringValuedToken
                     && buffer != null) {
@@ -732,7 +571,7 @@ public abstract class Tokenizer
      * Returns <code>true</code> if <code>ch</code> is
      * a non-whitespace character which delimits a token.
      */
-    private static boolean isDelimiter (int ch)
+    public static boolean isDelimiter(int ch)
     {
         for (int delimiter : DELIMITERS) {
             if (ch == delimiter) {
@@ -748,7 +587,7 @@ public abstract class Tokenizer
         return '0' <= ch && ch <= '9';
     }
 
-    private static boolean isWhitespace (int ch)
+    public static boolean isWhitespace(int ch)
     {
         for (int whitespace : WHITESPACES) {
             if (ch == whitespace) {

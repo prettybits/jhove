@@ -236,9 +236,38 @@ public class Parser
                 // If we get an exception, it just means it wasn't a stream
             }
             if (strm != null) {
+                String whitespace = getWSString();
+                if (whitespace == "") {
+                    // TODO: add error, "stream" keyword has to be followed by LF or CRLF - no whitespace is assumed to mean there was a delimiter found, which we will just assume to be part of the stream content instead, which _should_ be safe
+                } else if (whitespace.charAt(0) == ((char) 0x0D)) {
+                    // only CRLF is allowed, not CR by itself
+                    int ch = _tokenizer.readChar();
+                    if (ch != 0x0A) {
+                        // TODO: add error for detected CR without LF, back up _two_ chars so CR is treated as part of the stream
+                        _tokenizer.backupChar();
+                        _tokenizer.backupChar();
+                    }
+                }
+
+                PdfDictionary streamDictionary = (PdfDictionary) obj;
+                PdfObject streamLength = streamDictionary.get("Length");
+                if (streamLength == null) {
+                    // TODO: add error for missing Length key
+                } else if (!(streamLength instanceof PdfSimpleObject)) {
+                    // TODO: add error for unexpected type of Length key
+                }
+
+                try {
+                    int extent = ((PdfSimpleObject) streamLength).getIntValue();
+                    strm.readStreamContents(_tokenizer, extent);
+                } catch (ClassCastException exc) {
+                    // TODO: add error for wrong value type of Length key
+                }
+
                 // Assimilate the dictionary and the stream token into the
                 // object to be returned
-                PdfStream strmObj = new PdfStream ((PdfDictionary) obj, strm, _module);
+                // TODO: does this still make sense?
+                PdfStream strmObj = new PdfStream(streamDictionary, strm, _module);
                 if (!strmObj.isPdfaCompliant()) {
                     _pdfACompliant = false;
                 }
